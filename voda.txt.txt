@@ -1,0 +1,159 @@
+#include <LittleFS.h>
+#include <WiFi.h>
+#include <ESPAsyncWebServer.h>
+#include <DHT.h>
+
+// display:
+#include <LiquidCrystal.h>
+// RS, E, D4, D5, D6, D7
+LiquidCrystal lcd(14, 27, 26, 25, 33, 32);
+
+// button:
+const int btnPin = 13;
+bool lcdOn = true;
+
+#define DHTPIN 5       // Change to the pin you're using
+#define DHTTYPE DHT11   // Or DHT11
+
+DHT dht(DHTPIN, DHTTYPE);
+float temperature = 0.0;
+float humidity = 0.0;
+
+#define MOISTURE_PIN 34  // ADC pin for analog output
+int moistureLevel = 0;
+
+const int LIGHT_LEVEL_PIN = 35;
+int lightLevel = 0;
+
+// Replace with your network credentials
+const char* ssid = "HomeNetwork";
+const char* password = "DRXJN525";
+
+// Define the pin that will be controlled (e.g., GPIO 5 for onboard LED)
+const int pin = 19;  // Change to the GPIO pin you want to control
+
+// Create an AsyncWebServer object on port 80
+AsyncWebServer server(80);
+
+// Variable to hold the state of the pin (on/off)
+bool pinState = true; // Initially set to off (LOW)
+
+void setup() {
+  Serial.begin(115200);
+
+  pinMode(MOISTURE_PIN, INPUT);
+
+  pinMode(btnPin, INPUT_PULLUP);
+
+  pinMode(pin, OUTPUT);
+  digitalWrite(pin, pinState ? HIGH : LOW);
+
+  if (!LittleFS.begin()) {
+    Serial.println("Failed to mount LittleFS");
+    while(true); // Halt here so you know it failed
+  }
+
+  WiFi.begin(ssid, password);
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(1000);
+    Serial.println("Connecting to WiFi...");
+  }
+
+  Serial.println("Connected to WiFi");
+  Serial.println(WiFi.localIP());
+
+  // Initialize LCD
+  delay(1000); // wait for lcd to init (had issues on external power)
+  lcd.begin(16, 2);
+  lcd.clear();
+
+  // Display WiFi info on LCD
+  lcd.setCursor(0, 0);
+  lcd.print(ssid);
+  lcd.setCursor(0, 1);
+  lcd.print(WiFi.localIP().toString());
+  delay(3000); // Show network info for 3 seconds
+
+  server.on("/", HTTP_GET, [](AsyncWebServerRequest *request){
+    request->send(LittleFS, "/index.html", "text/html");
+  });
+  server.serveStatic("/style.css", LittleFS, "/style.css");
+  server.serveStatic("/script.js", LittleFS, "/script.js");
+  server.serveStatic("/models/", LittleFS, "/models/");
+
+  server.on("/signal", HTTP_GET, [](AsyncWebServerRequest *request){
+    pinState = !pinState;
+    digitalWrite(pin, pinState ? HIGH : LOW);
+    Serial.print("Pin state changed to: ");
+    Serial.println(pinState ? "OFF" : "ON");
+    request->send(200, "text/plain", pinState ? "Pin turned ON" : "Pin turned OFF");
+  });
+
+  server.on("/dht_sensor", HTTP_GET, [](AsyncWebServerRequest *request){
+    String json = "{";
+    json += "\"temperature\":" + String(temperature, 1) + ",";
+    json += "\"humidity\":" + String(humidity, 1);
+    json += "}";
+    request->send(200, "application/json", json);
+  });
+
+  server.on("/moisture_sensor", HTTP_GET, [](AsyncWebServerRequest *request){
+    String json = "{";
+    json += "\"moisture\":" + String(moistureLevel);
+    json += "}";
+    request->send(200, "application/json", json);
+  });
+
+  server.on("/light_sensor", HTTP_GET, [](AsyncWebServerRequest *request){
+    String json = "{";
+    json += "\"light\":" + String(lightLevel);
+    json += "}";
+    request->send(200, "application/json", json);
+  });
+
+  server.begin();
+  dht.begin(); // start dht readings
+}
+
+
+void loop() {
+  // Check button press (active low)
+  static bool lastButtonState = HIGH;
+  bool buttonState = digitalRead(btnPin);
+
+  if (lastButtonState == HIGH && buttonState == LOW) {
+    // Button pressed — toggle LCD
+    lcdOn = !lcdOn;
+    if (lcdOn) {
+      lcd.display();  // turn on display
+    } else {
+      lcd.noDisplay(); // turn off display
+    }
+    delay(300); // simple debounce
+  }
+  lastButtonState = buttonState;
+
+  // Your existing sensor readings...
+
+  float h = dht.readHumidity();
+  float t = dht.readTemperature();
+  moistureLevel = analogRead(MOISTURE_PIN);
+  lightLevel = analogRead(LIGHT_LEVEL_PIN);
+
+  if (!isnan(h) && !isnan(t)) {
+    humidity = h;
+    temperature = t;
+  } else {
+    Serial.println("Failed to read from DHT sensor!");
+  }
+
+  if (lcdOn) {
+    lcd.clear();
+    lcd.setCursor(0, 0);
+    lcd.printf("T:%.1fC H:%.1f%%", temperature, humidity);
+    lcd.setCursor(0, 1);
+    lcd.printf("M:%d L:%d", moistureLevel, lightLevel);
+  }
+
+  delay(2000);
+}

@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>ESP32 Monitoring</title>
+
+    <!-- Used for local testing -->
+    <!--<link rel="stylesheet" href="style.css"/>
+    <script src="script.js" defer></script>-->
+
+    <!-- Used for LittleFS -->
+    <link rel="stylesheet" href="/style.css" />
+    <script src="/script.js" defer></script>
+</head>
+<body>
+    <div id="splash-screen">
+        <div class="terminal">
+            <pre id="terminal-lines"></pre>
+        </div>
+    </div>    
+
+    <div id="esp-offline-popup">
+        ⚠️ ESP32 is offline. Trying to reconnect...
+    </div>
+      
+    <div class="sidebar">
+        <div class="sidebar-item" onclick="showPage('sensors')">
+            <span class="icon">📡</span>
+            <span class="tooltip">Sensors</span>
+        </div>
+        <div class="sidebar-item" onclick="showPage('automation')">
+            <span class="icon">🛠️</span>
+            <span class="tooltip">Automation</span>
+        </div>
+        <div class="sidebar-item" onclick="showPage('configuration')">
+            <span class="icon">⚙️</span>
+            <span class="tooltip">Configuration</span>
+        </div>
+        <div class="sidebar-item" onclick="showPage('info')">
+            <span class="icon">❔</span>
+            <span class="tooltip">Info</span>
+        </div>
+    </div>
+
+    <div id="sensors" class="page active">
+        <h1>Sensors</h1>
+        <div class="sensor-grid">
+
+            <div class="sensor-card tall">
+                <h3>🌡️ Temperature</h3>
+                <p id="temperature-value">Current: -- °C</p>
+                <div class="chart-wrapper">
+                    <svg id="tempChart" class="line-chart" viewBox="0 0 120 70" preserveAspectRatio="none"></svg>
+                </div>
+            </div>                       
+
+            <div class="sensor-card">
+                <h3>💧 Humidity</h3>
+                <p id="humidity-value">Current: -- %</p>
+                <div class="chart-wrapper">
+                    <svg id="humidityChart" class="line-chart" viewBox="0 0 120 70" preserveAspectRatio="none"></svg>
+                </div>
+            </div>
+
+            <div class="sensor-card">
+                <h3>💡 Light Level</h3>
+                <p id="light-value">Current: -- lx</p>
+                <div class="chart-wrapper">
+                    <svg id="lightChart" class="line-chart" viewBox="0 0 120 70" preserveAspectRatio="none"></svg>
+                </div>
+            </div>
+
+            <div class="sensor-card full-span">
+                <h3>🌱 Soil Moisture Sensors</h3>
+                <ul>
+                    <li id="moisture1-value">Sensor 1: -- %</li>
+                    <li id="moisture2-value">Sensor 2: -- %</li>
+                    <li id="moisture3-value">Sensor 3: -- %</li>
+                    <li id="moisture4-value">Sensor 4: -- %</li>
+                </ul>
+                <div class="chart-wrapper">
+                    <svg id="moistureChart" class="line-chart" viewBox="0 0 120 70" preserveAspectRatio="none"></svg>
+                </div>
+            </div>
+
+            <div class="sensor-card">
+              <h3>🔁 Mode</h3>
+              <p>Current: <strong id="mode-status">Auto</strong></p>
+              <button id="mode-btn" onclick="toggleMode()">Switch to Manual</button>
+              
+              <div style="margin-top:15px;">
+                <button id="onoff-btn" onclick="toggleOnOff()" disabled class="disabled-btn">Toggle ON/OFF</button>
+              </div>
+            </div>            
+        </div>
+    </div>      
+    
+
+
+    <div id="automation" class="page">
+        <div class="content">
+            <h1>Automation</h1>
+            
+            <form id="ruleForm" class="automation-form">
+                <fieldset>
+                    <legend>Add New Rule</legend>
+                    
+                    <label>
+                        Sensor:
+                        <select id="sensorSelect" required>
+                            <option value="temperature">🌡️ Temperature</option>
+                            <option value="humidity">💧 Humidity</option>
+                            <option value="light">💡 Light Level</option>
+                            <option value="moisture">🌱 Moisture</option>
+                        </select>
+                    </label>
+                  
+                    <label>
+                        Operator:
+                        <select id="operatorSelect" required>
+                            <option value=">">&gt;</option>
+                            <option value="<">&lt;</option>
+                            <option value="=">=</option>
+                        </select>
+                    </label>
+                  
+                    <label>
+                        Value:
+                        <input type="number" id="valueInput" step="any" required />
+                    </label>
+                  
+                    <label>
+                        Time Start:
+                        <input type="time" id="timeStart" />
+                    </label>
+                  
+                    <label>
+                        Time End:
+                        <input type="time" id="timeEnd" />
+                    </label>
+                  
+                    <label>
+                        Action:
+                        <select id="actionSelect" required>
+                            <option value="log">Log to Console</option>
+                            <option value="goHome">Go to Home Page</option>
+                        </select>
+                    </label>
+                  
+                    <button type="submit">Add Rule</button>
+                </fieldset>
+            </form>
+          
+            <h2>Current Rules</h2>
+            <ul id="rulesList"></ul>
+        </div>
+    </div>
+
+
+
+    <div id="configuration" class="page">
+        <div class="content">
+            <h1>Configuration</h1>
+            <form id="configForm" class="config-form">
+
+                <fieldset>
+                    <legend>Network Settings</legend>
+
+                    <label>
+                        Wi-Fi SSID:
+                        <input id="wifi-ssid-config" type="text" placeholder="Enter SSID" />
+                    </label>
+                
+                    <label>
+                        Wi-Fi Password:
+                        <input id="wifi-password-config" type="password" placeholder="Enter Password" />
+                    </label>
+                </fieldset>
+            
+                <fieldset>
+                    <legend>Sensor Settings</legend>
+
+                    <label>
+                        Temperature Unit:
+                        <select id="temperature-unit-config">
+                            <option value="celsius">Celsius (°C)</option>
+                            <option value="fahrenheit">Fahrenheit (°F)</option>
+                        </select>
+                    </label>
+
+                    <label>
+                        Sensor update interval (seconds)
+                        <input id="sensor-update-interval-config" type="range" min="1" max="50" value="1" />
+                    </label>
+                
+                    <label>
+                        Display enabled
+                        <input id="display-enabled-config" type="checkbox" checked />
+                    </label>
+                
+                    <label>
+                        Display brightness
+                        <input id="display-brightness-config" type="range" min="0" max="100" value="50" />
+                    </label>
+
+                    <label>
+                        Display timeout (seconds)
+                        <input id="display-timeout-config" type="range" min="0" max="100" value="50" />
+                    </label>
+                </fieldset>
+            
+                <fieldset>
+                    <legend>System</legend>
+                
+                    <label>
+                        Language:
+                        <select id="language-select-config">
+                            <option value="en">English</option>
+                            <option value="sl">Slovensko</option>
+                        </select>                      
+                    </label>
+                
+                    <label>
+                        Logging enabled
+                        <input id="logging-enabled-config" type="checkbox" checked />
+                    </label>
+
+                    <label>
+                        Logging interval (seconds)
+                        <input id="logging-interval-config" type="range" min="1" max="100" value="50" />
+                    </label>
+                </fieldset>
+            
+                <button type="submit">Save Configuration</button>
+            </form>
+        </div>
+    </div>
+
+
+
+    <div id="info" class="page">
+        <div class="content">
+            <h1>Info</h1>
+
+            <section class="info-section">
+                <h2>About This App</h2>
+                <p>
+                    <strong>C.R.K.N.</strong> (Centralized Remote Knowledge Network) is an ESP32-based Smart Garden System 
+                    designed for real-time monitoring and automation of environmental sensors. This lightweight web 
+                    interface, hosted directly on the device using LittleFS, features a clean, dark-themed UI focused 
+                    on clarity and usability. CRKN enables seamless control, tracking, and automation of conditions 
+                    like temperature, humidity, moisture, and more — all from your browser.
+                </p>                  
+            </section>
+          
+            <section class="info-section">
+                <h2>Author</h2>
+                <p>
+                    Developed by <strong>Urban Š.</strong>.<br/>
+                    Passionate about embedded systems, IoT, and user-friendly web interfaces.
+                </p>
+                <p>
+                    <a href="https://github.com/zakater5" target="_blank" rel="noopener" class="link">GitHub Profile</a><br/>
+                    <a href="mailto:urban.serbec@gmail.com" class="link">urban.serbec@gmail.com</a>
+                </p>
+            </section>
+          
+            <section class="info-section">
+                <h2>Version</h2>
+                <p>v1.0.0 (2025)</p>
+            </section>
+        </div>
+    </div>
+</body>
+</html>
