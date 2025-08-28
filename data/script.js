@@ -243,15 +243,15 @@ function chart_updateMoistureData(newVal) {
 }
 
 // Podatki za preizkus delovanje offline
-//const temperatureData = [22, 23, 22.5, 24, 23.5, 25, 26, 24.5, 23, 22.5, 23];
-//const humidityData = [45, 50, 47, 52, 48, 55, 53, 51, 50, 49, 48];
-//const lightData = [300, 320, 310, 330, 340, 350, 340, 335, 320, 310, 300];
-//const moistureData = [30, 32, 31, 29, 35, 33, 34, 32, 30, 31, 33];
-//
-//drawChartWithLabels("tempChart", temperatureData, "#2196f3");     // blue
-//drawChartWithLabels("humidityChart", humidityData, "#4caf50");   // green
-//drawChartWithLabels("lightChart", lightData, "#ffc107");         // amber
-//drawChartWithLabels("moistureChart", moistureData, "#ff5722");   // deep orange
+const temperatureData = [22, 23, 22.5, 24, 23.5, 25, 26, 24.5, 23, 22.5, 23];
+const humidityData = [45, 50, 47, 52, 48, 55, 53, 51, 50, 49, 48];
+const lightData = [300, 320, 310, 330, 340, 350, 340, 335, 320, 310, 300];
+const moistureData = [30, 32, 31, 29, 35, 33, 34, 32, 30, 31, 33];
+
+drawChartWithLabels("tempChart", temperatureData, "#2196f3");     // blue
+drawChartWithLabels("humidityChart", humidityData, "#4caf50");   // green
+drawChartWithLabels("lightChart", lightData, "#ffc107");         // amber
+drawChartWithLabels("moistureChart", moistureData, "#ff5722");   // deep orange
 
 
 // error notif
