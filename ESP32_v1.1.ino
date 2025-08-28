@@ -8,7 +8,7 @@
 #include <Arduino.h>
 #include <ArduinoJson.h>
 
-bool reset_settings = false;
+bool reset_settings = false; // Če vklopjeno se resetira vsa konfiguracija nazaj na prvotno ob zagonu
 
 // display:
 #define SCREEN_WIDTH 128
@@ -24,8 +24,8 @@ bool lcdOn = true;
 //#define DHTTYPE DHT21    // Use DHT21 for AM2301A
 
 DHT dht(DHTPIN, DHTTYPE);
-float temperature = 0.0;
-float humidity = 0.0;
+float temperature = 0.0; // spremenljivka v katero se piše temperatura
+float humidity = 0.0; // spremenljivka v katero se piše vlaga ozračja
 
 #define MOISTURE_PIN_1 33  // ADC pin for analog output
 int moistureLevel_1 = 0;
@@ -42,23 +42,18 @@ int lightLevel = 0;
 // Replace with your network credentials
 const char* ssid = "HomeNetwork";
 const char* password = "DRXJN525";
-//const char* ssid = "Krzicnik";
-//const char* password = "Kostanjevica";
 const char* apSSID = "ESP32_AccessPoint";
 const char* apPassword = "12345678"; // at least 8 chars
 
-// Define the pin that will be controlled (e.g., GPIO 5 for onboard LED)
-const int pin = 13;  // Change to the GPIO pin you want to control
+const int pin = 13;  // Pin kateri vklaplja pumpo
 
-// Create an AsyncWebServer object on port 80
-AsyncWebServer server(80);
+AsyncWebServer server(80); // Create an AsyncWebServer object on port 80
 
-// Variable to hold the state of the pin (on/off)
-bool pinState = false; // Initially set to off (LOW)
+bool pinState = false; // Ali je pumpa prvotno vklopjena/izklopjena
 
+// Funkcija za shranjevanje konfiguracije v config.json datoteko
 void saveSettings() {
   StaticJsonDocument<256> doc;
-
   doc["language"] = "en";
 
   File file = LittleFS.open("/config.json", "w");
@@ -72,10 +67,10 @@ void saveSettings() {
   } else {
     Serial.println("JSON saved successfully");
   }
-
   file.close();
 }
 
+// Funkcija za nalaganje konfiguracije / branje iz config.json datoteke
 void loadSettings() {
   File file = LittleFS.open("config.json", "r");
   if (!file) {
@@ -92,16 +87,14 @@ void loadSettings() {
   }
 
   String language = doc["language"];
-
   Serial.println("Language: " + language);
-
   file.close();
 }
 
+// Funkcija katera preveri ali datoteka config.json obstaja, če ne, jo naredi
 void ensureJsonFileExists() {
   if (!LittleFS.exists("/config.json")) {
     Serial.println("config.json not found, creating default one...");
-
     File file = LittleFS.open("/config.json", "w");
     if (!file) {
       Serial.println("Failed to create config.json");
@@ -116,40 +109,48 @@ void ensureJsonFileExists() {
     } else {
       Serial.println("Default config.json created.");
     }
-
     file.close();
   }
 }
 
 
+// Funkcija katera se zažene ob zagonu esp-ja
 void setup() {
-  Serial.begin(115200);
+  Serial.begin(115200); // Inicializacija Serial Monitor (Izpis razhroščevanje podatkov)
 
+  // Nastavitev načina vhoda za pine sensorjev vlaga
   pinMode(MOISTURE_PIN_1, INPUT);
   pinMode(MOISTURE_PIN_2, INPUT);
   pinMode(MOISTURE_PIN_3, INPUT);
   pinMode(MOISTURE_PIN_4, INPUT);
 
-  pinMode(pin, OUTPUT);
-  digitalWrite(pin, pinState ? HIGH : LOW);
+  pinMode(pin, OUTPUT); // Nastavitev vhoda za pumpo
+  digitalWrite(pin, pinState ? HIGH : LOW); // Prvotno stanje pumpe
 
+  // Inicializaja LittleFS, za datotečni sistem
   if (!LittleFS.begin()) {
     Serial.println("Failed to mount LittleFS");
-    while(true); // Halt here so you know it failed
+    while(true); // Zamrzni, nekaj je šlo narobe pri inicializaciji
   }
+
+  // Če vklopjeno da se konfiguracija resetira, se zbriše config.json datoteka
   if (LittleFS.exists("/config.json") && reset_settings == true) {
     LittleFS.remove("/config.json");
   }
-  ensureJsonFileExists();
+  ensureJsonFileExists(); // Preveri ali obstaja konfiguracijska datoteka
 
-  WiFi.mode(WIFI_AP_STA); // Start WiFi in both STA + AP mode
-  WiFi.begin(ssid, password);
+  // Inicializacija Wifi/AP
+  WiFi.mode(WIFI_AP_STA); // Nastavitev esp-ja da je v Wifi in AP (AccessPoint) načinu
+  WiFi.begin(ssid, password); // Vklopi wifi
+
+  // Če povezava ne uspe, probaj še 10-krat
   unsigned long startAttemptTime = millis();
   while (WiFi.status() != WL_CONNECTED && millis() - startAttemptTime < 10000) {
     delay(1000);
     Serial.println("Connecting to WiFi...");
   }
 
+  // Če uspešno povezan na wifi, izpiši IP na keterega se povezati
   if (WiFi.status() == WL_CONNECTED) {
     Serial.println("Connected to WiFi");
     Serial.println(WiFi.localIP());
@@ -157,19 +158,21 @@ void setup() {
     Serial.println("WiFi connection failed, continuing without WiFi");
   }
 
-  // Start Access Point (AP mode)
-  WiFi.softAP(apSSID, apPassword);
+  // Zagon AccessPoint
+  WiFi.softAP(apSSID, apPassword); // SoftAP pomeni, da se ne rabi povezati na WiFi
   Serial.print("AP IP: ");
-  Serial.println(WiFi.softAPIP());
+  Serial.println(WiFi.softAPIP()); // Izpis IP-ja za povezavo na AP
 
-  server.on("/", HTTP_GET, [](AsyncWebServerRequest *request){
+  server.on("/", HTTP_GET, [](AsyncWebServerRequest *request){ // Definicija za root endpoint, prikaže se prvotna stran (index.html)
     request->send(LittleFS, "/index.html", "text/html");
   });
+
+  // Definicija statičnih datotek
   server.serveStatic("/style.css", LittleFS, "/style.css");
   server.serveStatic("/script.js", LittleFS, "/script.js");
-  server.serveStatic("/models/", LittleFS, "/models/");
+  server.serveStatic("/models/", LittleFS, "/models/"); // zastarelo / ni več v uporabi
 
-  server.on("/signal", HTTP_GET, [](AsyncWebServerRequest *request){
+  server.on("/signal", HTTP_GET, [](AsyncWebServerRequest *request){ // sprejem signala za preklop pumpe
     pinState = !pinState;
     digitalWrite(pin, pinState ? HIGH : LOW);
     Serial.print("Pin state changed to: ");
@@ -177,7 +180,7 @@ void setup() {
     request->send(200, "text/plain", pinState ? "Pin turned ON" : "Pin turned OFF");
   });
 
-  server.on("/dht_sensor", HTTP_GET, [](AsyncWebServerRequest *request){
+  server.on("/dht_sensor", HTTP_GET, [](AsyncWebServerRequest *request){ // Pošiljanje podatkov za temperaturo in vlago
     String json = "{";
     json += "\"temperature\":" + String(temperature, 1) + ",";
     json += "\"humidity\":" + String(humidity, 1);
@@ -185,7 +188,7 @@ void setup() {
     request->send(200, "application/json", json);
   });
 
-  server.on("/moisture_sensor", HTTP_GET, [](AsyncWebServerRequest *request){
+  server.on("/moisture_sensor", HTTP_GET, [](AsyncWebServerRequest *request){ // Pošiljanje podatkov za vlago tal
     String json = "{";
     json += "\"moisture1\":" + String(moistureLevel_1) + ",";
     json += "\"moisture2\":" + String(moistureLevel_2) + ",";
@@ -195,7 +198,7 @@ void setup() {
     request->send(200, "application/json", json);
   });
 
-  server.on("/light_sensor", HTTP_GET, [](AsyncWebServerRequest *request){
+  server.on("/light_sensor", HTTP_GET, [](AsyncWebServerRequest *request){ // Pošiljanje podatkov za svetlost
     int lightLevelRaw = analogRead(LIGHT_LEVEL_PIN);
     int lightLux = map(lightLevelRaw, 0, 4095, 1000, 0);
     
@@ -205,14 +208,13 @@ void setup() {
     request->send(200, "application/json", json);
   });
 
-  server.on("/get_json_data", HTTP_GET, [](AsyncWebServerRequest *request) {
+  server.on("/get_json_data", HTTP_GET, [](AsyncWebServerRequest *request) { // Pošiljanje konfiguracije
     if (LittleFS.exists("/config.json")) {
       File file = LittleFS.open("/config.json", "r");
       if (!file) {
         request->send(500, "application/json", "{\"error\":\"Failed to open file\"}");
         return;
       }
-
       String json = file.readString();
       file.close();
 
@@ -222,6 +224,7 @@ void setup() {
     }
   });
 
+  // Endpoint za shranjevanje konfiguracije
   server.on("/save_json_data", HTTP_POST, [](AsyncWebServerRequest *request){}, NULL,
   [](AsyncWebServerRequest *request, uint8_t *data, size_t len, size_t index, size_t total) {
     String jsonString;
@@ -248,10 +251,11 @@ void setup() {
     request->send(200, "application/json", "{\"status\":\"OK\"}");
   });
 
+  // Zagon spletnega strežnika
   server.begin();
-  dht.begin(); // start dht readings
+  dht.begin(); // Zagon senzorja temperature / vlage
 
-  // Display setup:
+  // Inicializacije zaslona
   if(!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) {
     Serial.println(F("SSD1306 allocation failed"));
     for(;;);
@@ -260,32 +264,29 @@ void setup() {
   display.setTextSize(1);
   display.setTextColor(SSD1306_WHITE);
   display.setCursor(0,0);
-  display.println("Hello ESP32!");
+  display.println("Hello ESP32!"); // za testiranje
   display.display();
 }
 
 
+// Funkcija za konverzijo iz analognega podatka svetlosti v %
 int getMoisturePercent(int pin) {
   int raw = analogRead(pin);
-
-  // Treat anything under 100 as "not connected" or noise
   if (raw < 100) {
     return -1;
   }
-
-  // Constrain to expected range of sensor
   raw = constrain(raw, 100, 3000); 
-
-  // Map to 0–100% (wet to dry, or reverse depending on your sensor)
-  int percent = map(raw, 3000, 100, 0, 100); // Change to (100, 3000) if reversed
+  int percent = map(raw, 3000, 100, 0, 100);
   return percent;
 }
 
 
+// Funkcija katera vedno dela
 void loop() {
-  // Read DHT
-  float h = dht.readHumidity();
-  float t = dht.readTemperature();
+  float h = dht.readHumidity(); // branje vlage ozračja
+  float t = dht.readTemperature(); // branje temperature
+
+  // Preverjanje celovitosti podatka dht senzorja
   bool dhtOk = (!isnan(h) && !isnan(t));
   if (dhtOk) {
     humidity = h;
@@ -294,17 +295,18 @@ void loop() {
     Serial.println("Failed to read from DHT sensor!");
   }
 
-  // Moisture readings
+  // Branje vlage tal
   moistureLevel_1 = getMoisturePercent(MOISTURE_PIN_1);
   moistureLevel_2 = getMoisturePercent(MOISTURE_PIN_2);
   moistureLevel_3 = getMoisturePercent(MOISTURE_PIN_3);
   moistureLevel_4 = getMoisturePercent(MOISTURE_PIN_4);
 
-  // Light level
+  // Svetlost
   lightLevel = analogRead(LIGHT_LEVEL_PIN);
 
-  // Update display
+  // Posodabljanje zaslona
   if (lcdOn) {
+    // Izpis na zaslonu
     display.clearDisplay();
     display.setCursor(0,0);
     display.setTextSize(1);
@@ -336,5 +338,5 @@ void loop() {
     display.display();
   }
 
-  delay(2000);
+  delay(2000); // posodobi vsaki 2 sekundi
 }
