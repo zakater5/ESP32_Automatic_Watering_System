@@ -7,6 +7,10 @@
 #include <Adafruit_SSD1306.h>
 #include <Arduino.h>
 #include <ArduinoJson.h>
+#include "JsonUtils.h"
+#include "AutomationRules.h"
+
+std::vector<AutomationRule> rules;
 
 bool reset_settings = false; // Če vklopjeno se resetira vsa konfiguracija nazaj na prvotno ob zagonu
 
@@ -45,71 +49,41 @@ const char* password = "DRXJN525";
 const char* apSSID = "ESP32_AccessPoint";
 const char* apPassword = "12345678"; // at least 8 chars
 
-const int pin = 13;  // Pin kateri vklaplja pumpo
+const int PUMP_PIN = 13;  // Pin kateri vklaplja pumpo
 
 AsyncWebServer server(80); // Create an AsyncWebServer object on port 80
 
-bool pinState = false; // Ali je pumpa prvotno vklopjena/izklopjena
+bool PUMP_STATE = false; // Ali je pumpa prvotno vklopjena/izklopjena
 
-// Funkcija za shranjevanje konfiguracije v config.json datoteko
+
 void saveSettings() {
-  StaticJsonDocument<256> doc;
+  StaticJsonDocument<512> doc;
   doc["language"] = "en";
-
-  File file = LittleFS.open("/config.json", "w");
-  if (!file) {
-    Serial.println("Failed to open file for writing");
-    return;
-  }
-
-  if (serializeJson(doc, file) == 0) {
-    Serial.println("Failed to write JSON to file");
-  } else {
-    Serial.println("JSON saved successfully");
-  }
-  file.close();
+  saveJsonToFile("/config.json", doc);
 }
 
-// Funkcija za nalaganje konfiguracije / branje iz config.json datoteke
 void loadSettings() {
-  File file = LittleFS.open("config.json", "r");
-  if (!file) {
-    Serial.println("Failed to open file for reading");
-    return;
+  StaticJsonDocument<512> doc;
+  if (loadJsonFromFile("/config.json", doc)) {
+    String language = doc["language"] | "en";
+    Serial.println("Language: " + language);
   }
-
-  StaticJsonDocument<256> doc;
-  DeserializationError error = deserializeJson(doc, file);
-  if (error) {
-    Serial.print("Failed to read JSON: ");
-    Serial.println(error.c_str());
-    return;
-  }
-
-  String language = doc["language"];
-  Serial.println("Language: " + language);
-  file.close();
 }
 
-// Funkcija katera preveri ali datoteka config.json obstaja, če ne, jo naredi
-void ensureJsonFileExists() {
-  if (!LittleFS.exists("/config.json")) {
-    Serial.println("config.json not found, creating default one...");
-    File file = LittleFS.open("/config.json", "w");
-    if (!file) {
-      Serial.println("Failed to create config.json");
-      return;
-    }
+void ensureConfigExists() {
+  StaticJsonDocument<512> defaults;
+  defaults["language"] = "en";
+  ensureJsonFileExists("/config.json", defaults);
+}
 
-    StaticJsonDocument<256> doc;
-    doc["language"] = "en";
+void saveRules(const String& jsonRules) {
+  saveJsonToFile("/rules.json", jsonRules);
+}
 
-    if (serializeJson(doc, file) == 0) {
-      Serial.println("Filed to write default JSON");
-    } else {
-      Serial.println("Default config.json created.");
-    }
-    file.close();
+void loadRules() {
+  String json;
+  if (loadJsonAsString("/rules.json", json)) {
+    Serial.println("Rules: " + json);
   }
 }
 
@@ -124,8 +98,8 @@ void setup() {
   pinMode(MOISTURE_PIN_3, INPUT);
   pinMode(MOISTURE_PIN_4, INPUT);
 
-  pinMode(pin, OUTPUT); // Nastavitev vhoda za pumpo
-  digitalWrite(pin, pinState ? HIGH : LOW); // Prvotno stanje pumpe
+  pinMode(PUMP_PIN, OUTPUT); // Nastavitev vhoda za pumpo
+  digitalWrite(PUMP_PIN, PUMP_STATE ? HIGH : LOW); // Prvotno stanje pumpe
 
   // Inicializaja LittleFS, za datotečni sistem
   if (!LittleFS.begin()) {
@@ -137,7 +111,7 @@ void setup() {
   if (LittleFS.exists("/config.json") && reset_settings == true) {
     LittleFS.remove("/config.json");
   }
-  ensureJsonFileExists(); // Preveri ali obstaja konfiguracijska datoteka
+  ensureConfigExists(); // Preveri ali obstaja konfiguracijska datoteka
 
   // Inicializacija Wifi/AP
   WiFi.mode(WIFI_AP_STA); // Nastavitev esp-ja da je v Wifi in AP (AccessPoint) načinu
@@ -173,11 +147,11 @@ void setup() {
   server.serveStatic("/models/", LittleFS, "/models/"); // zastarelo / ni več v uporabi
 
   server.on("/signal", HTTP_GET, [](AsyncWebServerRequest *request){ // sprejem signala za preklop pumpe
-    pinState = !pinState;
-    digitalWrite(pin, pinState ? HIGH : LOW);
+    PUMP_STATE = !PUMP_STATE;
+    digitalWrite(PUMP_PIN, PUMP_STATE ? HIGH : LOW);
     Serial.print("Pin state changed to: ");
-    Serial.println(pinState ? "OFF" : "ON");
-    request->send(200, "text/plain", pinState ? "Pin turned ON" : "Pin turned OFF");
+    Serial.println(PUMP_STATE ? "OFF" : "ON");
+    request->send(200, "text/plain", PUMP_STATE ? "Pin turned ON" : "Pin turned OFF");
   });
 
   server.on("/dht_sensor", HTTP_GET, [](AsyncWebServerRequest *request){ // Pošiljanje podatkov za temperaturo in vlago
@@ -208,48 +182,59 @@ void setup() {
     request->send(200, "application/json", json);
   });
 
-  server.on("/get_json_data", HTTP_GET, [](AsyncWebServerRequest *request) { // Pošiljanje konfiguracije
-    if (LittleFS.exists("/config.json")) {
-      File file = LittleFS.open("/config.json", "r");
-      if (!file) {
-        request->send(500, "application/json", "{\"error\":\"Failed to open file\"}");
-        return;
-      }
-      String json = file.readString();
-      file.close();
 
+  // GET config.json
+  server.on("/get_json_data", HTTP_GET, [](AsyncWebServerRequest *request) {
+    String json;
+    if (loadJsonAsString("/config.json", json)) {
       request->send(200, "application/json", json);
     } else {
-      request->send(404, "application/json", "{\"error\":\"File not found\"}");
+      request->send(404, "application/json", "{\"error\":\"File not found or unreadable\"}");
     }
   });
 
-  // Endpoint za shranjevanje konfiguracije
+  // POST config.json
   server.on("/save_json_data", HTTP_POST, [](AsyncWebServerRequest *request){}, NULL,
   [](AsyncWebServerRequest *request, uint8_t *data, size_t len, size_t index, size_t total) {
     String jsonString;
+    jsonString.reserve(len);  // avoid reallocations
     for (size_t i = 0; i < len; i++) {
       jsonString += (char)data[i];
     }
 
-    StaticJsonDocument<512> doc;
-    DeserializationError error = deserializeJson(doc, jsonString);
-    if (error) {
-      request->send(400, "application/json", "{\"status\":\"Invalid JSON\"}");
-      return;
+    if (saveJsonToFile("/config.json", jsonString)) {
+      request->send(200, "application/json", "{\"status\":\"OK\"}");
+    } else {
+      request->send(400, "application/json", "{\"status\":\"Invalid or failed to save JSON\"}");
     }
-
-    File file = LittleFS.open("/config.json", "w");
-    if (!file) {
-      request->send(500, "application/json", "{\"status\":\"Failed to open file\"}");
-      return;
-    }
-
-    serializeJson(doc, file);
-    file.close();
-
-    request->send(200, "application/json", "{\"status\":\"OK\"}");
   });
+
+
+  server.on("/get_rules", HTTP_GET, [](AsyncWebServerRequest *request) {
+    String json;
+    if (loadJsonAsString("/rules.json", json)) {
+        request->send(200, "application/json", json);
+    } else {
+        request->send(404, "application/json", "{\"error\":\"rules.json not found or unreadable\"}");
+    }
+  });
+
+  server.on("/save_rules", HTTP_POST, [](AsyncWebServerRequest *request){}, NULL,
+  [](AsyncWebServerRequest *request, uint8_t *data, size_t len, size_t index, size_t total) {
+      String jsonString;
+      jsonString.reserve(len);
+      for (size_t i = 0; i < len; i++) {
+          jsonString += (char)data[i];
+      }
+
+      if (saveJsonToFile("/rules.json", jsonString)) {
+          loadAutomationRules(rules);
+          request->send(200, "application/json", "{\"status\":\"OK\"}");
+      } else {
+          request->send(400, "application/json", "{\"status\":\"Invalid or failed to save JSON\"}");
+      }
+  });
+
 
   // Zagon spletnega strežnika
   server.begin();
@@ -266,6 +251,9 @@ void setup() {
   display.setCursor(0,0);
   display.println("Hello ESP32!"); // za testiranje
   display.display();
+
+
+  loadAutomationRules(rules);
 }
 
 
@@ -337,6 +325,8 @@ void loop() {
 
     display.display();
   }
+
+  evaluateAutomationRules(rules, t, h, m, l, PUMP_PIN);
 
   delay(2000); // posodobi vsaki 2 sekundi
 }
