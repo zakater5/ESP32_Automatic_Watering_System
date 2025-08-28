@@ -14,16 +14,19 @@
     <script src="/script.js" defer></script>
 </head>
 <body>
+    <!-- Zaslon ko se program zažene -->
     <div id="splash-screen">
         <div class="terminal">
             <pre id="terminal-lines"></pre>
         </div>
     </div>    
 
+    <!-- Javljanje napake, ko esp32 ni povezan -->
     <div id="esp-offline-popup">
         ⚠️ ESP32 is offline. Trying to reconnect...
     </div>
       
+    <!-- Stranski meni -->
     <div class="sidebar">
         <div class="sidebar-item" onclick="showPage('sensors')">
             <span class="icon">📡</span>
@@ -43,6 +46,7 @@
         </div>
     </div>
 
+    <!-- Stran za prikaz podatkov senzorjev -->
     <div id="sensors" class="page active">
         <h1>Sensors</h1>
         <div class="sensor-grid">
@@ -97,7 +101,7 @@
     </div>      
     
 
-
+    <!-- Stran za vnašanje logike/pravil za avtomatsko delovanje -->
     <div id="automation" class="page">
         <div class="content">
             <h1>Automation</h1>
@@ -158,7 +162,7 @@
     </div>
 
 
-
+    <!-- Stran za konfiguracijo sistema/nastavitve -->
     <div id="configuration" class="page">
         <div class="content">
             <h1>Configuration</h1>
@@ -238,7 +242,7 @@
     </div>
 
 
-
+    <!-- Stan za informacije in o avtorju aplikacije -->
     <div id="info" class="page">
         <div class="content">
             <h1>Info</h1>
@@ -257,7 +261,7 @@
             <section class="info-section">
                 <h2>Author</h2>
                 <p>
-                    Developed by <strong>Urban Š.</strong>.<br/>
+                    Developed by <strong>Matej P.</strong>.<br/>
                     Passionate about embedded systems, IoT, and user-friendly web interfaces.
                 </p>
                 <p>
