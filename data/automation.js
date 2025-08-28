@@ -1,50 +1,42 @@
 const automationRules = [];
-
 const ruleForm = document.getElementById("ruleForm");
 const rulesList = document.getElementById("rulesList");
 
 function renderRules() {
-	rulesList.innerHTML = "";
-	automationRules.forEach(rule => {
-		const li = document.createElement("li");
+    rulesList.innerHTML = "";
+    automationRules.forEach(rule => {
+        const li = document.createElement("li");
+        const timeDesc = rule.timeRange ? ` between ${rule.timeRange.start} and ${rule.timeRange.end}` : "";
+        const desc = document.createElement("span");
+        desc.textContent = `If ${rule.sensor} ${rule.operator} ${rule.value}${timeDesc}, then ${rule.actionSelect}`;
+        if (!rule.enabled) desc.style.opacity = "0.5";
+        li.appendChild(desc);
 
-		// Display rule description
-		const timeDesc = rule.timeRange ?
-			` between ${rule.timeRange.start} and ${rule.timeRange.end}` :
-			"";
+        const toggle = document.createElement("input");
+        toggle.type = "checkbox";
+        toggle.checked = rule.enabled;
+        toggle.addEventListener("change", () => {
+            rule.enabled = toggle.checked;
+            renderRules();
+        });
+        li.appendChild(toggle);
 
-		const desc = document.createElement("span");
-		desc.textContent = `If ${rule.sensor} ${rule.operator} ${rule.value}${timeDesc}`;
-		if (!rule.enabled) desc.style.opacity = "0.5";
-		li.appendChild(desc);
+        const delBtn = document.createElement("button");
+        delBtn.textContent = "Delete";
+        delBtn.addEventListener("click", () => {
+            const index = automationRules.findIndex(r => r.id === rule.id);
+            if (index !== -1) {
+                automationRules.splice(index, 1);
+                renderRules();
+            }
+        });
+        li.appendChild(delBtn);
 
-		// Enable/disable toggle
-		const toggle = document.createElement("input");
-		toggle.type = "checkbox";
-		toggle.checked = rule.enabled;
-		toggle.addEventListener("change", () => {
-			rule.enabled = toggle.checked;
-			renderRules();
-		});
-		li.appendChild(toggle);
-
-		// Delete button
-		const delBtn = document.createElement("button");
-		delBtn.textContent = "Delete";
-		delBtn.addEventListener("click", () => {
-			const index = automationRules.findIndex(r => r.id === rule.id);
-			if (index !== -1) {
-				automationRules.splice(index, 1);
-				renderRules();
-			}
-		});
-		li.appendChild(delBtn);
-
-		rulesList.appendChild(li);
-	});
+        rulesList.appendChild(li);
+    });
 }
 
-ruleForm.addEventListener("submit", e => {
+ruleForm.addEventListener("submit", (e) => {
 	e.preventDefault();
 
 	const sensor = document.getElementById("sensorSelect").value;
@@ -52,6 +44,7 @@ ruleForm.addEventListener("submit", e => {
 	const value = parseFloat(document.getElementById("valueInput").value);
 	const timeStart = document.getElementById("timeStart").value;
 	const timeEnd = document.getElementById("timeEnd").value;
+	const actionSelect = document.getElementById("actionSelect").value;
 
 	const timeRange = timeStart && timeEnd ? {
 		start: timeStart,
@@ -64,15 +57,13 @@ ruleForm.addEventListener("submit", e => {
 		operator,
 		value,
 		timeRange,
-		action: () => {
-			console.log(`Action triggered for rule on ${sensor}`);
-			// Add actual action logic here
-		},
+		actionSelect,
 		enabled: true,
 	});
 
 	renderRules();
 	ruleForm.reset();
+	saveRulesToESP();
 });
 
 // Initial empty render
@@ -120,4 +111,22 @@ function isWithinTimeRange(start, end) {
 	endDate.setHours(endParts[0], endParts[1], 0, 0);
 
 	return now >= startDate && now <= endDate;
+}
+
+
+function saveRulesToESP() {
+    fetch("/save_rules", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify(automationRules)
+    })
+    .then(res => res.json())
+    .then(data => {
+        console.log("Rules saved to ESP:", data);
+    })
+    .catch(err => {
+        console.error("Error saving rules:", err);
+    });
 }
