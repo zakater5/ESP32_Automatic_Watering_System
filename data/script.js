@@ -1,11 +1,10 @@
+//Funkcija za prikaz strani v stranskem meniju 
 function showPage(pageId) {
 	const pages = document.querySelectorAll('.page');
 	pages.forEach(page => {
-		if (page.id === pageId) {
-			// Add active class to trigger animation
+		if (page.id === pageId) { // Dodaj aktivni razred za sprožitev animacije
 			page.classList.add('active');
-		} else {
-			// Remove active to hide old pages
+		} else { // Odstrani aktivno, da skriješ stare strani
 			page.classList.remove('active');
 		}
 	});
@@ -14,44 +13,48 @@ function showPage(pageId) {
 let isAuto = true;
 let pinState = false; // false = OFF, true = ON
 
+// Funkcija za nastavljanje načina upravljanja esp-ja (ročno / avtomatsko)
 function toggleMode() {
-  isAuto = !isAuto;
+	isAuto = !isAuto;
 
-  const modeText = document.getElementById("mode-status");
-  const modeBtn = document.getElementById("mode-btn");
-  const onoffBtn = document.getElementById("onoff-btn");
+	const modeText = document.getElementById("mode-status");
+	const modeBtn = document.getElementById("mode-btn");
+	const onoffBtn = document.getElementById("onoff-btn");
 
-  // Update mode text + button
-  modeText.textContent = isAuto ? "Auto" : "Manual";
-  modeBtn.textContent = isAuto ? "Switch to Manual" : "Switch to Auto";
+	// Update mode text + button
+	modeText.textContent = isAuto ? "Auto" : "Manual";
+	modeBtn.textContent = isAuto ? "Switch to Manual" : "Switch to Auto";
 
-  // Enable/disable ON/OFF button
-  if (isAuto) {
-    onoffBtn.disabled = true;
-    onoffBtn.classList.add("disabled-btn");
-  } else {
-    onoffBtn.disabled = false;
-    onoffBtn.classList.remove("disabled-btn");
-  }
+	// Enable/disable ON/OFF button
+	if (isAuto) {
+		onoffBtn.disabled = true;
+		onoffBtn.classList.add("disabled-btn");
+	} else {
+		onoffBtn.disabled = false;
+		onoffBtn.classList.remove("disabled-btn");
+	}
 }
 
+// Funkcija za pošiljanje signala esp-ju za vklop pumpe / izklop
 function toggleOnOff() {
-  // Call ESP endpoint
-  fetch("/signal")
-    .then(response => response.text())
-    .then(text => {
-      console.log("ESP Response:", text);
-
-      // Update local pinState based on response
-      pinState = !pinState;
-      document.getElementById("onoff-btn").textContent = pinState ? "Turn OFF" : "Turn ON";
-    })
-    .catch(err => {
-      console.error("Error toggling pin:", err);
-    });
+	fetch("/signal")
+		.then(response => response.text())
+		.then(text => {
+			pinState = !pinState;
+			document.getElementById("onoff-btn").textContent = pinState ? "Turn OFF" : "Turn ON";
+		})
+		.catch(err => {
+			console.error("Error toggling pin:", err);
+		});
 }
 
+// Funkcija za risanje grafov (Pomagal ChatGPT)
 function drawChartWithLabels(svgId, data, lineColor = "#2196f3") {
+	/* 
+		svgId = id html elementa v katerega rišemo
+		data = podatki katere rišemo v graf
+		lineColor = barva linij v grafu, privzeto = #2196f3
+	*/
 	const svg = document.getElementById(svgId);
 	svg.innerHTML = "";
 
@@ -211,176 +214,124 @@ function drawChartWithLabels(svgId, data, lineColor = "#2196f3") {
 }
 
 
-
+// Posadabljanje grafa ob pridobitvi novega podatko o temperaturi
 function chart_updateTemperatureData(newVal) {
-    temperatureData.shift();
-    temperatureData.push(newVal);
-    drawChartWithLabels("tempChart", temperatureData, "#fc7703");
+	temperatureData.shift();
+	temperatureData.push(newVal);
+	drawChartWithLabels("tempChart", temperatureData, "#fc7703");
 }
 
+// Posadabljanje grafa ob pridobitvi novega podatko o vlagi
 function chart_updateHumidityData(newVal) {
-    humidityData.shift();
-    humidityData.push(newVal);
-    drawChartWithLabels("humidityChart", humidityData, "#035afc");
+	humidityData.shift();
+	humidityData.push(newVal);
+	drawChartWithLabels("humidityChart", humidityData, "#035afc");
 }
 
+// Posadabljanje grafa ob pridobitvi novega podatko o svetlosti
 function chart_updateLightData(newVal) {
-    lightData.shift();
-    lightData.push(newVal);
-    drawChartWithLabels("lightChart", lightData, "#e8fc03");
+	lightData.shift();
+	lightData.push(newVal);
+	drawChartWithLabels("lightChart", lightData, "#e8fc03");
 }
 
+// Posadabljanje grafa ob pridobitvi novega podatko o vlažnosti
 function chart_updateMoistureData(newVal) {
-    moistureData.shift();
-    moistureData.push(newVal);
-    drawChartWithLabels("moistureChart", moistureData, "#03fc28");
+	moistureData.shift();
+	moistureData.push(newVal);
+	drawChartWithLabels("moistureChart", moistureData, "#03fc28");
 }
 
-// Sample data
-const temperatureData = [22, 23, 22.5, 24, 23.5, 25, 26, 24.5, 23, 22.5, 23];
-const humidityData = [45, 50, 47, 52, 48, 55, 53, 51, 50, 49, 48];
-const lightData = [300, 320, 310, 330, 340, 350, 340, 335, 320, 310, 300];
-const moistureData = [30, 32, 31, 29, 35, 33, 34, 32, 30, 31, 33];
-
-drawChartWithLabels("tempChart", temperatureData, "#2196f3");     // blue
-drawChartWithLabels("humidityChart", humidityData, "#4caf50");   // green
-drawChartWithLabels("lightChart", lightData, "#ffc107");         // amber
-drawChartWithLabels("moistureChart", moistureData, "#ff5722");   // deep orange
-
-//document.getElementById("temperature-value").textContent = `Current: ${temperatureData.at(-1)} °C`;
-//document.getElementById("humidity-value").textContent = `Current: ${humidityData.at(-1)} %`;
-//document.getElementById("light-value").textContent = `Current: ${lightData.at(-1)} lx`;
-//document.getElementById("moisture-value").textContent = `Current: ${moistureData.at(-1)}`;
-
-
-
-
-
-// TRANSLATION
-//const translations = {
-//	en: {
-//		sensorsTitle: "Sensors",
-//		automationTitle: "Automation",
-//		configurationTitle: "Configuration",
-//		infoTitle: "Info",
-//		temperatureLabel: "Temperature",
-//		humidityLabel: "Humidity",
-//		// add all other strings here
-//	},
-//	es: { // Example: Spanish
-//		sensorsTitle: "Sensores",
-//		automationTitle: "Automatización",
-//		configurationTitle: "Configuración",
-//		infoTitle: "Información",
-//		temperatureLabel: "Temperatura",
-//		humidityLabel: "Humedad",
-//		// add translations for all strings
-//	}
-//};
+// Podatki za preizkus delovanje offline
+//const temperatureData = [22, 23, 22.5, 24, 23.5, 25, 26, 24.5, 23, 22.5, 23];
+//const humidityData = [45, 50, 47, 52, 48, 55, 53, 51, 50, 49, 48];
+//const lightData = [300, 320, 310, 330, 340, 350, 340, 335, 320, 310, 300];
+//const moistureData = [30, 32, 31, 29, 35, 33, 34, 32, 30, 31, 33];
 //
-//function setLanguage(lang) {
-//	const elements = document.querySelectorAll('[data-i18n]');
-//	elements.forEach(el => {
-//		const key = el.getAttribute('data-i18n');
-//		if (translations[lang] && translations[lang][key]) {
-//			el.textContent = translations[lang][key];
-//		}
-//	});
-//}
-//
-//// On language change
-//document.getElementById('language-select-config').addEventListener('change', (e) => {
-//	setLanguage(e.target.value);
-//});
-//
-//setLanguage('en');
-//
-//const select = document.getElementById('language-select');
-//
-//// Load saved language or default to 'en'
-//const savedLang = localStorage.getItem('lang') || 'en';
-//select.value = savedLang;
-//setLanguage(savedLang);
-//
-//select.addEventListener('change', (e) => {
-//	const lang = e.target.value;
-//	localStorage.setItem('lang', lang);
-//	setLanguage(lang);
-//});
-
+//drawChartWithLabels("tempChart", temperatureData, "#2196f3");     // blue
+//drawChartWithLabels("humidityChart", humidityData, "#4caf50");   // green
+//drawChartWithLabels("lightChart", lightData, "#ffc107");         // amber
+//drawChartWithLabels("moistureChart", moistureData, "#ff5722");   // deep orange
 
 
 // error notif
 let espOffline = false;
 let offlinePopup = null;
 
+// Funkcija za prikaz obvestila ob nedosegljivosti esp-ja
 function displayESP32offlineNotif() {
-    if (!offlinePopup) {
-        offlinePopup = document.getElementById('esp-offline-popup');
-    }
-    if (!espOffline) {
-        offlinePopup.style.display = 'block';
-        espOffline = true;
-    }
+	if (!offlinePopup) {
+		offlinePopup = document.getElementById('esp-offline-popup');
+	}
+	if (!espOffline) {
+		offlinePopup.style.display = 'block';
+		espOffline = true;
+	}
 }
 
+// Funkcija za skrivanje obvestila ob nedosegljivosti esp-ja
 function hideESP32offlineNotif() { // This function is called on successful fetches
-    if (!offlinePopup) {
-        offlinePopup = document.getElementById('esp-offline-popup');
-    }
-    if (espOffline) {
-        offlinePopup.style.display = 'none';
-        espOffline = false;
-    }
+	if (!offlinePopup) {
+		offlinePopup = document.getElementById('esp-offline-popup');
+	}
+	if (espOffline) {
+		offlinePopup.style.display = 'none';
+		espOffline = false;
+	}
 }
 
-// sensor updates
+// funkcija za konverzijo podatka o svetlosti
 function convertLight(input) {
-    const clamped = Math.min(Math.max(input, 3000), 4000);
-    const percent = 1 - (clamped - 3000) / 1000;
-    return percent * 100;
+	const clamped = Math.min(Math.max(input, 3000), 4000);
+	const percent = 1 - (clamped - 3000) / 1000;
+	return percent * 100;
 }
 
+// funkcija katera kliče esp vsakih x milisekund za nov podatek o svetlobi
 function updateLightLevelData() {
 	fetch("/light_sensor")
 		.then(res => res.json())
 		.then(data => {
 			document.getElementById("light-value").textContent = "Current: " + data.light + " lx";
-            chart_updateLightData(data.light);
+			chart_updateLightData(data.light);
 			hideESP32offlineNotif();
 		})
 		.catch(err => displayESP32offlineNotif());
 }
 
+// funkcija katera kliče esp vsakih x milisekund za nov podatek o temperaturi in vlagi (ozračja :( )
 function updateTempHumData() {
-    fetch("/dht_sensor")
-        .then(res => res.json())
-        .then(data => {
-            document.getElementById("temperature-value").textContent = "Current: " + data.temperature + " °C";
-            document.getElementById("humidity-value").textContent = "Current: " + data.humidity + " %";
-            chart_updateTemperatureData(data.temperature);
-            chart_updateHumidityData(data.humidity);
+	fetch("/dht_sensor")
+		.then(res => res.json())
+		.then(data => {
+			document.getElementById("temperature-value").textContent = "Current: " + data.temperature + " °C";
+			document.getElementById("humidity-value").textContent = "Current: " + data.humidity + " %";
+			chart_updateTemperatureData(data.temperature);
+			chart_updateHumidityData(data.humidity);
 			hideESP32offlineNotif();
-        })
+		})
 		.catch(err => displayESP32offlineNotif());
 }
 
+// funkcija katera kliče esp vsakih x milisekund za nov podatek o vlagi tal
 function updateMoistureData() {
-    fetch("/moisture_sensor")
-        .then(res => res.json())
-        .then(data => {
-            document.getElementById("moisture1-value").textContent = "Moist_1: " + data.moisture1 + " %";
-            document.getElementById("moisture2-value").textContent = "Moist_2: " + data.moisture2 + " %";
-            document.getElementById("moisture3-value").textContent = "Moist_3: " + data.moisture3 + " %";
-            document.getElementById("moisture4-value").textContent = "Moist_4: " + data.moisture4 + " %";
-            const moisture_sum = (data.moisture1 + data.moisture2 + data.moisture3 + data.moisture4) / 4
-            chart_updateMoistureData(moisture_sum);
+	fetch("/moisture_sensor")
+		.then(res => res.json())
+		.then(data => {
+			document.getElementById("moisture1-value").textContent = "Moist_1: " + data.moisture1 + " %";
+			document.getElementById("moisture2-value").textContent = "Moist_2: " + data.moisture2 + " %";
+			document.getElementById("moisture3-value").textContent = "Moist_3: " + data.moisture3 + " %";
+			document.getElementById("moisture4-value").textContent = "Moist_4: " + data.moisture4 + " %";
+			const moisture_sum = (data.moisture1 + data.moisture2 + data.moisture3 + data.moisture4) / 4
+			chart_updateMoistureData(moisture_sum);
 			hideESP32offlineNotif();
-        })
+		})
 		.catch(err => displayESP32offlineNotif());
 }
 
+// Funkcija za prvotno nalaganje konfiguracije shranjene na esp-ju
 function loadJsonDataFromEsp32() {
+	// id-ji vseh HTML elementov kateri prikazujejo nastavitev konfiguracije:
 	const wifi_ssid_config = document.getElementById('wifi-ssid-config');
 	const wifi_password_config = document.getElementById('wifi-password-config');
 	const temperature_unit_config = document.getElementById('temperature-unit-config');
@@ -392,10 +343,10 @@ function loadJsonDataFromEsp32() {
 	const logging_enabled_config = document.getElementById('logging-enabled-config');
 	const logging_interval_config = document.getElementById('logging-interval-config');
 
-	fetch('/get_json_data')
-  		.then(res => res.json())
-  		.then(data => {
-  		  	console.log('Received JSON:', data);
+	fetch('/get_json_data') // klic za pridobitev konfiguracije od esp-ja
+		.then(res => res.json())
+		.then(data => {
+			console.log('Received JSON:', data);
 			wifi_ssid_config.value = data["wifi_ssid_config"] || 'HomeNetwork';
 			wifi_password_config.value = data["wifi_password_config"] || 'DRXJN525';
 			temperature_unit_config.value = data["temperature_unit_config"] || 'celsius';
@@ -406,11 +357,13 @@ function loadJsonDataFromEsp32() {
 			language_select_config.value = data["language_select_config"] || 'en';
 			logging_enabled_config.checked = data["logging_enabled_config"] ?? true;
 			logging_interval_config.value = data["logging_interval_config"] || 50;
-  		})
-  		.catch(err => console.error('Error fetching JSON:', err));
+		})
+		.catch(err => console.error('Error fetching JSON:', err));
 }
 
+// Funkcija za shranjevanje konfiguracija na esp
 function saveJsonDataToEsp32() {
+	// id-ji vseh HTML elementov kateri prikazujejo nastavitev konfiguracije:
 	const wifi_ssid_config = document.getElementById('wifi-ssid-config');
 	const wifi_password_config = document.getElementById('wifi-password-config');
 	const temperature_unit_config = document.getElementById('temperature-unit-config');
@@ -422,7 +375,7 @@ function saveJsonDataToEsp32() {
 	const logging_enabled_config = document.getElementById('logging-enabled-config');
 	const logging_interval_config = document.getElementById('logging-interval-config');
 
-	const new_json_config = {
+	const new_json_config = { // zapakirat v JSON
 		"wifi_ssid_config": wifi_ssid_config.value,
 		"wifi_password_config": wifi_password_config.value,
 		"temperature_unit_config": temperature_unit_config.value,
@@ -435,90 +388,85 @@ function saveJsonDataToEsp32() {
 		"logging_interval_config": logging_interval_config.value,
 	};
 
-	fetch('/save_json_data', {
-		method: 'POST',
-		headers: {
-			'Content-Type': 'application/json'
-		},
-		body: JSON.stringify(new_json_config)
-	})
-	.then(response => {
-		if (response.ok) {
-			alert("Settings saved successfully!");
-		} else {
-			alert("Failed to save settings.");
-		}
-	})
-	.catch(err => console.error("Save error:", err));	
+	fetch('/save_json_data', { // klic za shranjevanje konfiguracije od esp-ja
+			method: 'POST',
+			headers: {
+				'Content-Type': 'application/json'
+			},
+			body: JSON.stringify(new_json_config)
+		})
+		.then(response => {
+			if (response.ok) {
+				alert("Settings saved successfully!");
+			} else {
+				alert("Failed to save settings.");
+			}
+		})
+		.catch(err => console.error("Save error:", err));
 }
 
+// Zagon kode ob začetku delovanja HTML-ja
 document.addEventListener("DOMContentLoaded", () => {
-	//const toggle = document.getElementById("pinToggle");
-	//toggle.addEventListener("change", () => {
-	//	fetch("/signal").then(res => res.text()).then(text => console.log(text));
-	//});
-
+	// Klic funkcij za osveževanje ob začetku
 	updateLightLevelData();
-    updateTempHumData();
-    updateMoistureData();
+	updateTempHumData();
+	updateMoistureData();
 
-	setInterval(() => {
+	setInterval(() => { // Klic istih funkcij vsako sekundo (1000ms = 1s)
 		updateLightLevelData();
-        updateTempHumData();
-        updateMoistureData();
+		updateTempHumData();
+		updateMoistureData();
 	}, 1000);
 
-	loadJsonDataFromEsp32();
+	loadJsonDataFromEsp32(); // Klic funkcije za nalaganje konfiguracije esp-ja
 
-	document.getElementById('configForm').addEventListener('submit', (e) => {
+	document.getElementById('configForm').addEventListener('submit', (e) => { // ob kliku "Shrani"
 		e.preventDefault();
-		saveJsonDataToEsp32();
-	});	
+		saveJsonDataToEsp32(); // shranjevanje konfiguracije
+	});
 });
 
 
 
+// Prikaz prvotnega "splash-screen" ob zagonu spletne strani
 window.addEventListener("load", () => {
-    const splash = document.getElementById("splash-screen");
-    const terminal = document.getElementById("terminal-lines");
+	const splash = document.getElementById("splash-screen");
+	const terminal = document.getElementById("terminal-lines");
 
-    const lines = [
-        "Initializing CRKN kernel v1.0...",
-        "Loading sensor modules: [OK]",
-        "Mounting filesystem: [OK]",
-        "Reading configuration files: [OK]",
-        "Establishing Wi-Fi connection...",
-        "Wi-Fi connected: 10.0.0.9",
-        "",
-        "Launching services...",
-        " - SensorService... [OK]",
-        " - AutomationDaemon... [OK]",
-        " - WebInterface... [OK]",
-        "",
-        "System time sync... [OK]",
-        "System stable.",
-        "",
-        ">> Welcome to 🌿 C.R.K.N.",
-        ">> Centralized Remote Knowledge Network",
-        "",
-        "Boot complete. Starting UI..."
-    ];
+	const lines = [ // prikaz naklučnih podatkov
+		"Initializing CRKN kernel v1.0...",
+		"Loading sensor modules: [OK]",
+		"Mounting filesystem: [OK]",
+		"Reading configuration files: [OK]",
+		"Establishing Wi-Fi connection...",
+		"Wi-Fi connected: 10.0.0.9",
+		"",
+		"Launching services...",
+		" - SensorService... [OK]",
+		" - AutomationDaemon... [OK]",
+		" - WebInterface... [OK]",
+		"",
+		"System time sync... [OK]",
+		"System stable.",
+		"",
+		">> Welcome to 🌿 C.R.K.N.",
+		">> Centralized Remote Knowledge Network",
+		"",
+		"Boot complete. Starting UI..."
+	];
 
-    let index = 0;
-
-    function typeNextLine() {
-        if (index < lines.length) {
-            terminal.textContent += lines[index] + "\n";
-            index++;
-            setTimeout(typeNextLine, 100); // 100ms per line
-        } else {
-            // Hide after boot sequence is done
-            setTimeout(() => {
-                splash.style.opacity = "0";
-                setTimeout(() => splash.style.display = "none", 500);
-            }, 1000);
-        }
-    }
-
-    typeNextLine();
+	let index = 0;
+	function typeNextLine() { // Prikaz vsake linije
+		if (index < lines.length) {
+			terminal.textContent += lines[index] + "\n";
+			index++;
+			setTimeout(typeNextLine, 100); // 100ms na linijo
+		} else {
+			setTimeout(() => { // Skrij po končanem zagonskem zaporedju
+				splash.style.opacity = "0";
+				setTimeout(() => splash.style.display = "none", 500);
+			}, 1000);
+		}
+	}
+	typeNextLine();
 });
