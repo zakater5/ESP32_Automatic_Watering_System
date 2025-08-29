@@ -10,6 +10,11 @@
 #include "JsonUtils.h"
 #include "AutomationRules.h"
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+DynamicJsonDocument doc(1024);
+#pragma GCC diagnostic pop
+
 std::vector<AutomationRule> rules;
 
 bool reset_settings = false; // Če vklopjeno se resetira vsa konfiguracija nazaj na prvotno ob zagonu
@@ -57,13 +62,13 @@ bool PUMP_STATE = false; // Ali je pumpa prvotno vklopjena/izklopjena
 
 
 void saveSettings() {
-  StaticJsonDocument<512> doc;
+  DynamicJsonDocument doc(1024);
   doc["language"] = "en";
   saveJsonToFile("/config.json", doc);
 }
 
 void loadSettings() {
-  StaticJsonDocument<512> doc;
+  DynamicJsonDocument doc(1024);
   if (loadJsonFromFile("/config.json", doc)) {
     String language = doc["language"] | "en";
     Serial.println("Language: " + language);
@@ -71,7 +76,7 @@ void loadSettings() {
 }
 
 void ensureConfigExists() {
-  StaticJsonDocument<512> defaults;
+  DynamicJsonDocument defaults(1024);
   defaults["language"] = "en";
   ensureJsonFileExists("/config.json", defaults);
 }
@@ -326,6 +331,8 @@ void loop() {
     display.display();
   }
 
+  int m = getMoisturePercent(MOISTURE_PIN_1); // or any sensor
+  int l = analogRead(LIGHT_LEVEL_PIN);
   evaluateAutomationRules(rules, t, h, m, l, PUMP_PIN);
 
   delay(2000); // posodobi vsaki 2 sekundi

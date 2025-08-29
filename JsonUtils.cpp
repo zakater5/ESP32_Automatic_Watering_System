@@ -1,7 +1,7 @@
 #include "JsonUtils.h"
 
 // Save JSON from a StaticJsonDocument
-bool saveJsonToFile(const char* path, const StaticJsonDocument<1024>& doc) {
+bool saveJsonToFile(const char* path, const DynamicJsonDocument& doc) {
   File file = LittleFS.open(path, "w");
   if (!file) {
     Serial.printf("Failed to open %s for writing\n", path);
@@ -19,7 +19,7 @@ bool saveJsonToFile(const char* path, const StaticJsonDocument<1024>& doc) {
 
 // Save JSON from a String
 bool saveJsonToFile(const char* path, const String& jsonString) {
-  StaticJsonDocument<1024> doc;
+  DynamicJsonDocument doc(1024);
   DeserializationError error = deserializeJson(doc, jsonString);
   if (error) {
     Serial.printf("Invalid JSON string for %s: %s\n", path, error.c_str());
@@ -29,7 +29,7 @@ bool saveJsonToFile(const char* path, const String& jsonString) {
 }
 
 // Load JSON into a StaticJsonDocument
-bool loadJsonFromFile(const char* path, StaticJsonDocument<1024>& doc) {
+bool loadJsonFromFile(const char* path, DynamicJsonDocument& doc) {
   File file = LittleFS.open(path, "r");
   if (!file) {
     Serial.printf("Failed to open %s for reading\n", path);
@@ -58,7 +58,7 @@ bool loadJsonAsString(const char* path, String& jsonString) {
 }
 
 // Ensure a file exists, create with defaults if missing
-bool ensureJsonFileExists(const char* path, const StaticJsonDocument<1024>& defaults) {
+bool ensureJsonFileExists(const char* path, const DynamicJsonDocument& defaults) {
   if (!LittleFS.exists(path)) {
     Serial.printf("%s not found, creating default...\n", path);
     return saveJsonToFile(path, defaults);

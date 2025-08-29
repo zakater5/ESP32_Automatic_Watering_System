@@ -6,7 +6,7 @@
 bool loadAutomationRules(std::vector<AutomationRule>& rules, const char* path) {
     rules.clear();
 
-    StaticJsonDocument<4096> doc;
+    DynamicJsonDocument doc(4096);
     if (!loadJsonFromFile(path, doc)) {
         Serial.println("Failed to load rules.json");
         return false;
