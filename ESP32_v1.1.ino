@@ -9,6 +9,8 @@
 #include <ArduinoJson.h>
 #include "JsonUtils.h"
 #include "AutomationRules.h"
+#include "Pins.h"
+#include "Intro.h"
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
@@ -18,34 +20,23 @@ DynamicJsonDocument doc(1024);
 std::vector<AutomationRule> rules;
 
 bool reset_settings = false; // Če vklopjeno se resetira vsa konfiguracija nazaj na prvotno ob zagonu
+bool playIntro = false;
 
 // display:
-#define SCREEN_WIDTH 128
-#define SCREEN_HEIGHT 64
-#define OLED_RESET    -1  // Reset pin isn't used
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 
 // button:
 bool lcdOn = true;
 
-#define DHTPIN 23       // Change to the pin you're using
-#define DHTTYPE DHT11   // Or DHT11
-//#define DHTTYPE DHT21    // Use DHT21 for AM2301A
-
 DHT dht(DHTPIN, DHTTYPE);
 float temperature = 0.0; // spremenljivka v katero se piše temperatura
 float humidity = 0.0; // spremenljivka v katero se piše vlaga ozračja
 
-#define MOISTURE_PIN_1 33  // ADC pin for analog output
 int moistureLevel_1 = 0;
-#define MOISTURE_PIN_2 32  // ADC pin for analog output
 int moistureLevel_2 = 0;
-#define MOISTURE_PIN_3 35  // ADC pin for analog output
 int moistureLevel_3 = 0;
-#define MOISTURE_PIN_4 34  // ADC pin for analog output
 int moistureLevel_4 = 0;
 
-const int LIGHT_LEVEL_PIN = 36;
 int lightLevel = 0;
 
 // Replace with your network credentials
@@ -53,8 +44,6 @@ const char* ssid = "HomeNetwork";
 const char* password = "DRXJN525";
 const char* apSSID = "ESP32_AccessPoint";
 const char* apPassword = "12345678"; // at least 8 chars
-
-const int PUMP_PIN = 13;  // Pin kateri vklaplja pumpo
 
 AsyncWebServer server(80); // Create an AsyncWebServer object on port 80
 
@@ -250,13 +239,15 @@ void setup() {
     Serial.println(F("SSD1306 allocation failed"));
     for(;;);
   }
+
+  if (playIntro) {
+    playIntro();
+  }
+
   display.clearDisplay();
   display.setTextSize(1);
   display.setTextColor(SSD1306_WHITE);
-  display.setCursor(0,0);
-  display.println("Hello ESP32!"); // za testiranje
   display.display();
-
 
   loadAutomationRules(rules);
 }
