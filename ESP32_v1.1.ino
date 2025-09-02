@@ -10,7 +10,6 @@
 #include "JsonUtils.h"
 #include "AutomationRules.h"
 #include "Pins.h"
-#include "Intro.h"
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
@@ -20,7 +19,6 @@ DynamicJsonDocument doc(1024);
 std::vector<AutomationRule> rules;
 
 bool reset_settings = false; // Če vklopjeno se resetira vsa konfiguracija nazaj na prvotno ob zagonu
-bool playIntro = false;
 
 // display:
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
@@ -240,10 +238,6 @@ void setup() {
     for(;;);
   }
 
-  if (playIntro) {
-    playIntro();
-  }
-
   display.clearDisplay();
   display.setTextSize(1);
   display.setTextColor(SSD1306_WHITE);
@@ -255,8 +249,9 @@ void setup() {
 
 // Funkcija za konverzijo iz analognega podatka svetlosti v %
 int getMoisturePercent(int pin) {
+  delay(5);
   int raw = analogRead(pin);
-  if (raw < 100) {
+  if (raw < 99) {
     return -1;
   }
   raw = constrain(raw, 100, 3000); 
