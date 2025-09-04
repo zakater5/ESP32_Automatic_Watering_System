@@ -93,9 +93,24 @@ void setup() {
   pinMode(PUMP_PIN, OUTPUT); // Nastavitev vhoda za pumpo
   digitalWrite(PUMP_PIN, PUMP_STATE ? HIGH : LOW); // Prvotno stanje pumpe
 
+  // Inicializacije zaslona
+  if(!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) {
+    Serial.println(F("SSD1306 allocation failed"));
+    for(;;);
+  }
+
+  display.clearDisplay();
+  display.setTextSize(1);
+  display.setTextColor(SSD1306_WHITE);
+  display.display();
+
+
   // Inicializaja LittleFS, za datotečni sistem
   if (!LittleFS.begin()) {
     Serial.println("Failed to mount LittleFS");
+    display.clearDisplay();
+    display.setCursor(0,0);
+    display.println("LittleFS Error");
     while(true); // Zamrzni, nekaj je šlo narobe pri inicializaciji
   }
 
@@ -111,15 +126,23 @@ void setup() {
 
   // Če povezava ne uspe, probaj še 10-krat
   unsigned long startAttemptTime = millis();
+  int attemptCounter = 0;
   while (WiFi.status() != WL_CONNECTED && millis() - startAttemptTime < 10000) {
     delay(1000);
     Serial.println("Connecting to WiFi...");
+    display.clearDisplay();
+    display.setCursor(0,0);
+    display.printf("Connecting to WiFi ", attemptCounter);
+    attemptCounter = attemptCounter + 1;
   }
 
   // Če uspešno povezan na wifi, izpiši IP na keterega se povezati
   if (WiFi.status() == WL_CONNECTED) {
     Serial.println("Connected to WiFi");
     Serial.println(WiFi.localIP());
+    display.clearDisplay();
+    display.setCursor(0,0);
+    display.printf("Connected: ", WiFi.localIP());
   } else {
     Serial.println("WiFi connection failed, continuing without WiFi");
   }
@@ -231,17 +254,6 @@ void setup() {
   // Zagon spletnega strežnika
   server.begin();
   dht.begin(); // Zagon senzorja temperature / vlage
-
-  // Inicializacije zaslona
-  if(!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) {
-    Serial.println(F("SSD1306 allocation failed"));
-    for(;;);
-  }
-
-  display.clearDisplay();
-  display.setTextSize(1);
-  display.setTextColor(SSD1306_WHITE);
-  display.display();
 
   loadAutomationRules(rules);
 }
