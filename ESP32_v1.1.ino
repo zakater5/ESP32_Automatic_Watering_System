@@ -102,8 +102,14 @@ void setup() {
   display.clearDisplay();
   display.setTextSize(1);
   display.setTextColor(SSD1306_WHITE);
+  display.setCursor(10, 20);
+  display.setTextSize(2);
+  display.print("C.R.K.N.");
+  display.setTextSize(1);
+  display.setCursor(20, 45);
+  display.print("Starting...");
   display.display();
-
+  delay(2000);
 
   // Inicializaja LittleFS, za datotečni sistem
   if (!LittleFS.begin()) {
@@ -111,6 +117,7 @@ void setup() {
     display.clearDisplay();
     display.setCursor(0,0);
     display.println("LittleFS Error");
+    display.display();
     while(true); // Zamrzni, nekaj je šlo narobe pri inicializaciji
   }
 
@@ -124,16 +131,26 @@ void setup() {
   WiFi.mode(WIFI_AP_STA); // Nastavitev esp-ja da je v Wifi in AP (AccessPoint) načinu
   WiFi.begin(ssid, password); // Vklopi wifi
 
+  // Zagon AccessPoint
+  WiFi.softAP(apSSID, apPassword); // SoftAP pomeni, da se ne rabi povezati na WiFi
+  Serial.print("AP IP: ");
+  Serial.println(WiFi.softAPIP()); // Izpis IP-ja za povezavo na AP
+
   // Če povezava ne uspe, probaj še 10-krat
   unsigned long startAttemptTime = millis();
   int attemptCounter = 0;
   while (WiFi.status() != WL_CONNECTED && millis() - startAttemptTime < 10000) {
-    delay(1000);
-    Serial.println("Connecting to WiFi...");
+    delay(500);
+    int dotCount = attemptCounter % 4; // cycles 0-3
     display.clearDisplay();
     display.setCursor(0,0);
-    display.printf("Connecting to WiFi ", attemptCounter);
+    display.print("Connecting to WiFi");
+    for (int i=0; i<dotCount; i++) {
+      display.print(".");
+    }
+    display.display();
     attemptCounter = attemptCounter + 1;
+    delay(500);
   }
 
   // Če uspešno povezan na wifi, izpiši IP na keterega se povezati
@@ -142,15 +159,14 @@ void setup() {
     Serial.println(WiFi.localIP());
     display.clearDisplay();
     display.setCursor(0,0);
-    display.printf("Connected: ", WiFi.localIP());
+    display.printf("Connected: %s", WiFi.localIP().toString().c_str());
+    display.setCursor(0,10);
+    display.printf("AP IP: %s", WiFi.softAPIP().toString().c_str());
+    display.display();
+    delay(2000);
   } else {
     Serial.println("WiFi connection failed, continuing without WiFi");
   }
-
-  // Zagon AccessPoint
-  WiFi.softAP(apSSID, apPassword); // SoftAP pomeni, da se ne rabi povezati na WiFi
-  Serial.print("AP IP: ");
-  Serial.println(WiFi.softAPIP()); // Izpis IP-ja za povezavo na AP
 
   server.on("/", HTTP_GET, [](AsyncWebServerRequest *request){ // Definicija za root endpoint, prikaže se prvotna stran (index.html)
     request->send(LittleFS, "/index.html", "text/html");
