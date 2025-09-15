@@ -252,18 +252,20 @@ void setup() {
 
   server.on("/save_rules", HTTP_POST, [](AsyncWebServerRequest *request){}, NULL,
   [](AsyncWebServerRequest *request, uint8_t *data, size_t len, size_t index, size_t total) {
-      String jsonString;
-      jsonString.reserve(len);
-      for (size_t i = 0; i < len; i++) {
-          jsonString += (char)data[i];
-      }
-
+    static String jsonString;  // static so it persists across chunks
+    if (index == 0) jsonString = ""; // first chunk, reset
+    for (size_t i = 0; i < len; i++) {
+      jsonString += (char)data[i];
+    }
+    if (index + len == total) {
+      // last chunk
       if (saveJsonToFile("/rules.json", jsonString)) {
-          loadAutomationRules(rules);
-          request->send(200, "application/json", "{\"status\":\"OK\"}");
+        loadAutomationRules(rules);
+        request->send(200, "application/json", "{\"status\":\"OK\"}");
       } else {
-          request->send(400, "application/json", "{\"status\":\"Invalid or failed to save JSON\"}");
+        request->send(400, "application/json", "{\"status\":\"Invalid or failed to save JSON\"}");
       }
+    }
   });
 
 

@@ -69,51 +69,6 @@ ruleForm.addEventListener("submit", (e) => {
 // Initial empty render
 renderRules();
 
-// Example evaluation function - integrate with your sensor data updates:
-function evaluateAutomation(sensorData) {
-	automationRules.forEach(rule => {
-		if (!rule.enabled) return;
-
-		const sensorValue = sensorData[rule.sensor];
-		if (sensorValue === undefined) return;
-
-		let conditionMet = false;
-		switch (rule.operator) {
-			case ">":
-				conditionMet = sensorValue > rule.value;
-				break;
-			case "<":
-				conditionMet = sensorValue < rule.value;
-				break;
-			case "=":
-				conditionMet = sensorValue === rule.value;
-				break;
-		}
-
-		const timeOk = rule.timeRange ? isWithinTimeRange(rule.timeRange.start, rule.timeRange.end) : true;
-
-		if (conditionMet && timeOk) {
-			rule.action();
-		}
-	});
-}
-
-// Time check helper (same as earlier)
-function isWithinTimeRange(start, end) {
-	const now = new Date();
-	const startParts = start.split(":").map(Number);
-	const endParts = end.split(":").map(Number);
-
-	const startDate = new Date(now);
-	startDate.setHours(startParts[0], startParts[1], 0, 0);
-
-	const endDate = new Date(now);
-	endDate.setHours(endParts[0], endParts[1], 0, 0);
-
-	return now >= startDate && now <= endDate;
-}
-
-
 function saveRulesToESP() {
     fetch("/save_rules", {
         method: "POST",
@@ -130,3 +85,11 @@ function saveRulesToESP() {
         console.error("Error saving rules:", err);
     });
 }
+
+
+fetch("/get_rules")
+  .then(res => res.json())
+  .then(data => {
+      automationRules.push(...data);
+      renderRules();
+  });
