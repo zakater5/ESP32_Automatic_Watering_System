@@ -255,30 +255,30 @@ drawChartWithLabels("moistureChart", moistureData, "#ff5722");   // deep orange
 
 
 // error notif
-let espOffline = false;
-let offlinePopup = null;
+let offlinePopup = document.getElementById('esp-offline-popup');
+let offlineTimer = null;
+let offlineState = false;
 
 // Funkcija za prikaz obvestila ob nedosegljivosti esp-ja
 function displayESP32offlineNotif() {
-	if (!offlinePopup) {
-		offlinePopup = document.getElementById('esp-offline-popup');
-	}
-	if (!espOffline) {
-		offlinePopup.style.display = 'block';
-		espOffline = true;
-	}
+    if (offlineTimer) clearTimeout(offlineTimer);
+    offlineTimer = setTimeout(() => {
+        if (!offlineState) {
+            offlinePopup.style.display = 'block';
+            offlineState = true;
+        }
+    }, 2000); // pokaži samo, če 2 sekundi NI nobenega uspešnega fetch-a
 }
 
 // Funkcija za skrivanje obvestila ob nedosegljivosti esp-ja
-function hideESP32offlineNotif() { // This function is called on successful fetches
-	if (!offlinePopup) {
-		offlinePopup = document.getElementById('esp-offline-popup');
-	}
-	if (espOffline) {
-		offlinePopup.style.display = 'none';
-		espOffline = false;
-	}
+function hideESP32offlineNotif() {
+    if (offlineTimer) clearTimeout(offlineTimer);
+    if (offlineState) {
+        offlinePopup.style.display = 'none';
+        offlineState = false;
+    }
 }
+
 
 // funkcija za konverzijo podatka o svetlosti
 function convertLight(input) {
