@@ -18,6 +18,7 @@ function renderRules() {
         toggle.addEventListener("change", () => {
             rule.enabled = toggle.checked;
             renderRules();
+            saveRulesToESP();
         });
         li.appendChild(toggle);
 
@@ -28,6 +29,7 @@ function renderRules() {
             if (index !== -1) {
                 automationRules.splice(index, 1);
                 renderRules();
+                saveRulesToESP();
             }
         });
         li.appendChild(delBtn);
@@ -77,7 +79,10 @@ function saveRulesToESP() {
         },
         body: JSON.stringify(automationRules)
     })
-    .then(res => res.json())
+    .then(res => {
+        if (!res.ok) throw new Error("Server error: " + res.status);
+        return res.json();
+    })    
     .then(data => {
         console.log("Rules saved to ESP:", data);
     })
@@ -90,6 +95,7 @@ function saveRulesToESP() {
 fetch("/get_rules")
   .then(res => res.json())
   .then(data => {
-      automationRules.push(...data);
-      renderRules();
-  });
+    automationRules.length = 0;   // reset array
+    automationRules.push(...data);
+    renderRules();
+});
