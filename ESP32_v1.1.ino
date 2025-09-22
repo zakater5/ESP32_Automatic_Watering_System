@@ -175,6 +175,7 @@ void setup() {
   // Definicija statičnih datotek
   server.serveStatic("/style.css", LittleFS, "/style.css");
   server.serveStatic("/script.js", LittleFS, "/script.js");
+  server.serveStatic("/automation.js", LittleFS, "/automation.js");
   server.serveStatic("/models/", LittleFS, "/models/"); // zastarelo / ni več v uporabi
 
   server.on("/signal", HTTP_GET, [](AsyncWebServerRequest *request){ // sprejem signala za preklop pumpe
