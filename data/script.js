@@ -12,27 +12,33 @@ function showPage(pageId) {
 
 let isAuto = true;
 let pinState = false; // false = OFF, true = ON
+window.isAuto = true;
 
 // Funkcija za nastavljanje načina upravljanja esp-ja (ročno / avtomatsko)
 function toggleMode() {
-	isAuto = !isAuto;
+    window.isAuto = !window.isAuto;
+    const modeText = document.getElementById("mode-status");
+    const modeBtn = document.getElementById("mode-btn");
+    const onoffBtn = document.getElementById("onoff-btn");
+    modeText.textContent = window.isAuto ? "Auto" : "Manual";
+    modeBtn.textContent = window.isAuto ? "Switch to Manual" : "Switch to Auto";
 
-	const modeText = document.getElementById("mode-status");
-	const modeBtn = document.getElementById("mode-btn");
-	const onoffBtn = document.getElementById("onoff-btn");
+    if (window.isAuto) {
+        onoffBtn.disabled = true;
+        onoffBtn.classList.add("disabled-btn");
+    } else {
+        onoffBtn.disabled = false;
+        onoffBtn.classList.remove("disabled-btn");
+    }
 
-	// Update mode text + button
-	modeText.textContent = isAuto ? "Auto" : "Manual";
-	modeBtn.textContent = isAuto ? "Switch to Manual" : "Switch to Auto";
-
-	// Enable/disable ON/OFF button
-	if (isAuto) {
-		onoffBtn.disabled = true;
-		onoffBtn.classList.add("disabled-btn");
-	} else {
-		onoffBtn.disabled = false;
-		onoffBtn.classList.remove("disabled-btn");
-	}
+    fetch("/set_mode", { // povej ESP-ju
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ auto: window.isAuto })
+    })
+    .then(res => res.json())
+    .then(data => console.log("ESP mode updated:", data))
+    .catch(err => console.error("Error updating mode:", err));
 }
 
 // Funkcija za pošiljanje signala esp-ju za vklop pumpe / izklop
@@ -469,4 +475,58 @@ window.addEventListener("load", () => {
 		}
 	}
 	typeNextLine();
+});
+
+
+
+document.addEventListener("DOMContentLoaded", () => {
+	const intervalSlider = document.getElementById("sensor-update-interval-config");
+	const intervalDisplay = document.getElementById("interval-display");
+
+	intervalDisplay.textContent = intervalSlider.value + "s";
+	intervalSlider.addEventListener("input", () => {
+	    intervalDisplay.textContent = intervalSlider.value + "s";
+	});
+
+    const form = document.getElementById("configForm");
+    fetch("/get_json_data") // Preberi config iz ESP
+        .then(res => res.json())
+        .then(config => {
+			document.getElementById("wifi-ssid-config").value = config.wifi_ssid || "";
+			document.getElementById("wifi-password-config").value = config.wifi_password || "";
+			intervalSlider.value = config.sensor_update_interval || 2;
+			intervalDisplay.textContent = intervalSlider.value + "s";
+			document.getElementById("display-enabled-config").checked = config.display_enabled ?? true;
+		})		
+        .catch(err => console.error("Error loading config:", err));
+
+	document.getElementById("configForm").addEventListener("submit", async (e) => {
+		e.preventDefault(); // prepreči reload
+	
+		const config = {
+			wifi_ssid: document.getElementById("wifi-ssid-config").value,
+			wifi_password: document.getElementById("wifi-password-config").value,
+			sensor_update_interval: parseInt(document.getElementById("sensor-update-interval-config").value, 10),
+			display_enabled: document.getElementById("display-enabled-config").checked
+		};
+	
+		try {
+			const response = await fetch("/save_json_data", {
+				method: "POST",
+				headers: {
+					"Content-Type": "application/json"
+				},
+				body: JSON.stringify(config)
+			});
+	
+			if (response.ok) {
+				alert("Configuration saved!");
+			} else {
+				alert("Failed to save configuration.");
+			}
+		} catch (err) {
+			console.error(err);
+			alert("Error sending configuration.");
+		}
+	});		
 });

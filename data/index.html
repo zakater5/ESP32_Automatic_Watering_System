@@ -6,14 +6,14 @@
     <title>ESP32 Monitoring</title>
 
     <!-- Used for local testing -->
-    <!--<link rel="stylesheet" href="style.css"/>
+    <link rel="stylesheet" href="style.css"/>
     <script src="script.js" defer></script>
-    <script src="automation.js" defer></script>-->
+    <script src="automation.js" defer></script>
 
     <!-- Used for LittleFS -->
-    <link rel="stylesheet" href="/style.css" />
+    <!--<link rel="stylesheet" href="/style.css" />
     <script src="/script.js" defer></script>
-    <script src="/automation.js" defer></script>
+    <script src="/automation.js" defer></script>-->
 </head>
 <body>
     <!-- Zaslon ko se program zažene -->
@@ -188,56 +188,17 @@
                     <legend>Sensor Settings</legend>
 
                     <label>
-                        Temperature Unit:
-                        <select id="temperature-unit-config">
-                            <option value="celsius">Celsius (°C)</option>
-                            <option value="fahrenheit">Fahrenheit (°F)</option>
-                        </select>
-                    </label>
-
-                    <label>
                         Sensor update interval (seconds)
-                        <input id="sensor-update-interval-config" type="range" min="1" max="50" value="1" />
+                        <input id="sensor-update-interval-config" type="range" min="1" max="50" value="2" />
+                        <span id="interval-display">2s</span>
                     </label>
                 
                     <label>
                         Display enabled
                         <input id="display-enabled-config" type="checkbox" checked />
                     </label>
-                
-                    <label>
-                        Display brightness
-                        <input id="display-brightness-config" type="range" min="0" max="100" value="50" />
-                    </label>
-
-                    <label>
-                        Display timeout (seconds)
-                        <input id="display-timeout-config" type="range" min="0" max="100" value="50" />
-                    </label>
                 </fieldset>
-            
-                <fieldset>
-                    <legend>System</legend>
-                
-                    <label>
-                        Language:
-                        <select id="language-select-config">
-                            <option value="en">English</option>
-                            <option value="sl">Slovensko</option>
-                        </select>                      
-                    </label>
-                
-                    <label>
-                        Logging enabled
-                        <input id="logging-enabled-config" type="checkbox" checked />
-                    </label>
 
-                    <label>
-                        Logging interval (seconds)
-                        <input id="logging-interval-config" type="range" min="1" max="100" value="50" />
-                    </label>
-                </fieldset>
-            
                 <button type="submit">Save Configuration</button>
             </form>
         </div>

@@ -38,6 +38,8 @@ int moistureLevel_4 = 0;
 int lightLevel = 0;
 
 // Replace with your network credentials
+String wifiSsid;
+String wifiPassword;
 const char* ssid = "HomeNetwork";
 const char* password = "DRXJN525";
 const char* apSSID = "ESP32_AccessPoint";
@@ -46,6 +48,7 @@ const char* apPassword = "12345678"; // at least 8 chars
 AsyncWebServer server(80); // Create an AsyncWebServer object on port 80
 
 bool PUMP_STATE = false; // Ali je pumpa prvotno vklopjena/izklopjena
+bool isAuto = true; // default: avtomatski način
 
 
 void saveSettings() {
@@ -54,17 +57,28 @@ void saveSettings() {
   saveJsonToFile("/config.json", doc);
 }
 
+unsigned long lastUpdate = 0;
+int sensorIntervalMs = 2000; // default 2s
+
 void loadSettings() {
   DynamicJsonDocument doc(1024);
   if (loadJsonFromFile("/config.json", doc)) {
-    String language = doc["language"] | "en";
-    Serial.println("Language: " + language);
+    wifiSsid = doc["wifi_ssid"] | "";
+    wifiPassword = doc["wifi_password"] | "";
+    sensorIntervalMs = (doc["sensor_update_interval"] | 5) * 1000;
+    lcdOn = doc["display_enabled"] | true;
+
+    Serial.printf("Loaded config: SSID=%s, interval=%dms, display=%d\n", 
+      ssid.c_str(), sensorIntervalMs, lcdOn);
   }
 }
 
-void ensureConfigExists() {
-  DynamicJsonDocument defaults(1024);
-  defaults["language"] = "en";
+void ensureConfigExists() { // v ensureConfigExists ali default config
+  DynamicJsonDocument defaults(512);
+  defaults["wifi_ssid"] = "";
+  defaults["wifi_password"] = "";
+  defaults["sensor_update_interval"] = 2; // default 2 sec
+  defaults["display_enabled"] = true;
   ensureJsonFileExists("/config.json", defaults);
 }
 
@@ -129,7 +143,12 @@ void setup() {
 
   // Inicializacija Wifi/AP
   WiFi.mode(WIFI_AP_STA); // Nastavitev esp-ja da je v Wifi in AP (AccessPoint) načinu
-  WiFi.begin(ssid, password); // Vklopi wifi
+  //WiFi.begin(ssid, password); // Vklopi wifi
+  if (wifiSsid != "") {
+      WiFi.begin(wifiSsid.c_str(), wifiPassword.c_str());
+  } else {
+      WiFi.begin(ssid, password); // fallback default, če ni v configu
+  }
 
   // Zagon AccessPoint
   WiFi.softAP(apSSID, apPassword); // SoftAP pomeni, da se ne rabi povezati na WiFi
@@ -186,6 +205,25 @@ void setup() {
     request->send(200, "text/plain", PUMP_STATE ? "Pin turned ON" : "Pin turned OFF");
   });
 
+  server.on("/set_mode", HTTP_POST, [](AsyncWebServerRequest *request){}, NULL,
+  [](AsyncWebServerRequest *request, uint8_t *data, size_t len, size_t index, size_t total) {
+    static String body;
+    if (index == 0) body = "";
+    for (size_t i = 0; i < len; i++) {
+      body += (char)data[i];
+    }
+    if (index + len == total) {
+      DynamicJsonDocument doc(256);
+      DeserializationError err = deserializeJson(doc, body);
+      if (!err && doc.containsKey("auto")) {
+        isAuto = doc["auto"];
+        request->send(200, "application/json", "{\"status\":\"ok\"}");
+      } else {
+        request->send(400, "application/json", "{\"error\":\"invalid json\"}");
+      }
+    }
+  });
+
   server.on("/dht_sensor", HTTP_GET, [](AsyncWebServerRequest *request){ // Pošiljanje podatkov za temperaturo in vlago
     String json = "{";
     json += "\"temperature\":" + String(temperature, 1) + ",";
@@ -228,19 +266,36 @@ void setup() {
   // POST config.json
   server.on("/save_json_data", HTTP_POST, [](AsyncWebServerRequest *request){}, NULL,
   [](AsyncWebServerRequest *request, uint8_t *data, size_t len, size_t index, size_t total) {
-    String jsonString;
-    jsonString.reserve(len);  // avoid reallocations
+    static String jsonString;
+    if (index == 0) jsonString = "";
     for (size_t i = 0; i < len; i++) {
       jsonString += (char)data[i];
     }
 
-    if (saveJsonToFile("/config.json", jsonString)) {
-      request->send(200, "application/json", "{\"status\":\"OK\"}");
-    } else {
-      request->send(400, "application/json", "{\"status\":\"Invalid or failed to save JSON\"}");
+    if (index + len == total) {
+      DynamicJsonDocument doc(512);
+      DeserializationError err = deserializeJson(doc, jsonString);
+
+      if (!err) {
+        // če je v JSON-u display_enabled → spremeni lcdOn
+        if (doc.containsKey("display_enabled")) {
+          lcdOn = doc["display_enabled"];
+          if (!lcdOn) {
+            display.clearDisplay();
+            display.display(); // izklopi takoj
+          }
+        }
+
+        if (saveJsonToFile("/config.json", jsonString)) {
+          request->send(200, "application/json", "{\"status\":\"OK\"}");
+        } else {
+          request->send(400, "application/json", "{\"status\":\"Failed to save JSON\"}");
+        }
+      } else {
+        request->send(400, "application/json", "{\"status\":\"Invalid JSON\"}");
+      }
     }
   });
-
 
   server.on("/get_rules", HTTP_GET, [](AsyncWebServerRequest *request) {
     String json;
@@ -350,7 +405,13 @@ void loop() {
 
   int m = getMoisturePercent(MOISTURE_PIN_1); // or any sensor
   int l = analogRead(LIGHT_LEVEL_PIN);
-  evaluateAutomationRules(rules, t, h, m, l, PUMP_PIN);
 
-  delay(2000); // posodobi vsaki 2 sekundi
+  if (isAuto) {
+    evaluateAutomationRules(rules, t, h, m, l, PUMP_PIN);
+  } else {
+    // manual mode – nič pravil
+    // pumpo upravljaš samo preko gumba /signal
+  }
+
+  delay(sensorIntervalMs); // posodobi vsaki 2 sekundi
 }
