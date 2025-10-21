@@ -247,7 +247,7 @@ void setup() {
     int lightLux = map(lightLevelRaw, 0, 4095, 1000, 0);
     
     String json = "{";
-    json += "\"light\":" + String(lightLux) + "lx";
+    json += "\"light\":" + String(lightLux);
     json += "}";
     request->send(200, "application/json", json);
   });
