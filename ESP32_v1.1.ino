@@ -40,8 +40,8 @@ int lightLevel = 0;
 // Replace with your network credentials
 String wifiSsid;
 String wifiPassword;
-const char* ssid = "HomeNetwork";
-const char* password = "DRXJN525";
+const char* ssid = "Network1";
+const char* password = "123456789";
 const char* apSSID = "ESP32_AccessPoint";
 const char* apPassword = "12345678"; // at least 8 chars
 
@@ -415,3 +415,4 @@ void loop() {
 
   delay(sensorIntervalMs); // posodobi vsaki 2 sekundi
 }
+
